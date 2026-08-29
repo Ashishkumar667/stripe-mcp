@@ -11,9 +11,15 @@ function createMcpServer() {
   const server = new Server({ name: "stripe-mcp", version: "1.0.0" }, { capabilities: { tools: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: getTools() }));
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     try {
-      const result = await handleTool(request.params.name, request.params.arguments || {});
+      const args = { ...(request.params.arguments || {}) };
+      const authHeader = extra?.requestInfo?.headers?.authorization;
+      const bearerToken = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+      if (bearerToken?.startsWith("Bearer ") && !args.accessToken && !args.access_token && !args["access-token"]) {
+        args.accessToken = bearerToken.slice("Bearer ".length);
+      }
+      const result = await handleTool(request.params.name, args);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (error) {
       return { isError: true, content: [{ type: "text", text: JSON.stringify({ error: error.message, statusCode: error.statusCode || 500, details: error.details }) }] };
