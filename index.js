@@ -25,11 +25,17 @@ function createMcpServer() {
 async function startServer() {
   const app = express();
   app.use(express.json());
-  const server = createMcpServer();
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-  await server.connect(transport);
 
-  app.all("/mcp", (request, response) => transport.handleRequest(request, response, request.body));
+  app.all("/mcp", async (request, response) => {
+    const server = createMcpServer();
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    response.on("close", () => {
+      transport.close();
+      server.close();
+    });
+    await server.connect(transport);
+    await transport.handleRequest(request, response, request.body);
+  });
   app.get("/health", (_request, response) => response.json({ ok: true, service: "stripe-mcp" }));
   app.listen(config.port, () => console.error(`Stripe MCP listening on http://localhost:${config.port}/mcp`));
 }
