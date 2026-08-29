@@ -43,6 +43,7 @@ async function startServer() {
     await transport.handleRequest(request, response, request.body);
   });
   app.get("/health", (_request, response) => response.json({ ok: true, service: "stripe-mcp" }));
+  app.get("/link/oauth/callback", (request, response) => response.json({ code: request.query.code, state: request.query.state }));
   app.listen(config.port, () => console.error(`Stripe MCP listening on http://localhost:${config.port}/mcp`));
 }
 
