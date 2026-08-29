@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const { Server } = require("@modelcontextprotocol/sdk/server/index.js");
 const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
