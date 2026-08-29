@@ -3,14 +3,16 @@ const oauth = require("../linkOAuth");
 const config = require("../config");
 
 function createService(args) {
-  if (!args.accessToken) {
+  const accessToken = args.accessToken || args.access_token || args["access-token"];
+  const connectedAccountId = args.connectedAccountId || args.stripe_user_id || args["connected-account-id"];
+  if (!accessToken) {
     throw new Error("accessToken is required. Complete OAuth first, then provide the returned access token.");
   }
-  return new LinkService(args.accessToken, args.connectedAccountId);
+  return new LinkService(accessToken, connectedAccountId);
 }
 
 function resourceArguments(args) {
-  const { accessToken, connectedAccountId, params, ...rest } = args;
+  const { accessToken, access_token, "access-token": accessTokenDash, connectedAccountId, stripe_user_id, "connected-account-id": connectedAccountIdDash, params, ...rest } = args;
   return params || rest;
 }
 
