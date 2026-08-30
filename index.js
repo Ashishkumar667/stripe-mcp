@@ -7,18 +7,40 @@ const { getTools } = require("./mcp/tools");
 const { handleTool } = require("./mcp/toolHandler");
 const config = require("./config");
 
-function createMcpServer() {
+function headerValue(headers, name) {
+  if (!headers) return "";
+  const value = headers[name] ?? headers[name.toLowerCase()];
+  if (Array.isArray(value)) return value[0] || "";
+  return typeof value === "string" ? value : "";
+}
+
+function applyConnectorCredentials(args, ...headerSources) {
+  const headers = Object.assign({}, ...headerSources.filter(Boolean));
+  const access = headerValue(headers, "access-token") || headerValue(headers, "x-access-token");
+  const refresh = headerValue(headers, "refresh-token") || headerValue(headers, "x-refresh-token");
+  const authorization = headerValue(headers, "authorization");
+  if (access) {
+    args.accessToken = access;
+  } else if (authorization.startsWith("Bearer ")) {
+    args.accessToken = authorization.slice("Bearer ".length);
+  }
+  if (refresh) {
+    args.refreshToken = refresh;
+  }
+  const account = headerValue(headers, "connected-account-id") || headerValue(headers, "stripe-account");
+  if (account && !args.connectedAccountId && !args.stripe_user_id && !args["connected-account-id"]) {
+    args.connectedAccountId = account;
+  }
+}
+
+function createMcpServer(httpHeaders) {
   const server = new Server({ name: "stripe-mcp", version: "1.0.0" }, { capabilities: { tools: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: getTools() }));
   server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     try {
       const args = { ...(request.params.arguments || {}) };
-      const authHeader = extra?.requestInfo?.headers?.authorization;
-      const bearerToken = Array.isArray(authHeader) ? authHeader[0] : authHeader;
-      if (bearerToken?.startsWith("Bearer ") && !args.accessToken && !args.access_token && !args["access-token"]) {
-        args.accessToken = bearerToken.slice("Bearer ".length);
-      }
+      applyConnectorCredentials(args, httpHeaders, extra?.requestInfo?.headers);
       const result = await handleTool(request.params.name, args);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (error) {
@@ -33,7 +55,7 @@ async function startServer() {
   app.use(express.json());
 
   app.all("/mcp", async (request, response) => {
-    const server = createMcpServer();
+    const server = createMcpServer(request.headers);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     response.on("close", () => {
       transport.close();

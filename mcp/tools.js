@@ -1,9 +1,6 @@
 const baseSchema = {
   type: "object",
-  required: ["accessToken"],
   properties: {
-    accessToken: { type: "string", description: "Stripe OAuth access token" },
-    refreshToken: { type: "string", description: "Optional Stripe OAuth refresh token, used to auto-refresh if accessToken has expired" },
     connectedAccountId: { type: "string", description: "Optional acct_... connected account" },
     id: { type: "string", description: "Stripe resource ID" },
     params: { type: "object", additionalProperties: true },
